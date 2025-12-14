@@ -1,306 +1,255 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/dashboard/Sidebar";
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  RefreshCw,
+  BarChart3,
+  PieChart as PieIcon,
+  Activity,
+} from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 
-// --- Definição de Tipos ---
-type DashboardMetric = {
-  label: string;
-  value: string;
-};
-
-type ChartDataPoint = {
-  mes: string;
-  queimadas: number;
-};
-
-type FilterOption = {
-  value: string;
-  label: string;
-};
-
-type FilterOptionsData = {
-  types: FilterOption[];
-  shifts: FilterOption[];
-  regions: FilterOption[];
-  groupings: FilterOption[];
-  periods: FilterOption[];
-};
-
-type FilterState = {
-  type: string;
-  shift: string;
-  region: string;
-  grouping: string;
-  period: string;
-};
+// Cores para os gráficos (Gradiente Azul/Alerta)
+const COLORS = [
+  "#1650A7",
+  "#FF4444",
+  "#00C49F",
+  "#FFBB28",
+  "#FF8042",
+  "#8884d8",
+];
 
 const Dashboard: React.FC = () => {
-  // --- Estados para os Dados ---
-  const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Estado para os filtros selecionados
-  const [filters, setFilters] = useState<FilterState>({
-    type: "",
-    shift: "",
-    region: "",
-    grouping: "",
-    period: "",
-  });
-
-  // --- Estado para as opções dos filtros ---
-  const [filterOptions, setFilterOptions] = useState<FilterOptionsData>({
-    types: [],
-    shifts: [],
-    regions: [],
-    groupings: [],
-    periods: [],
-  });
-
   const navigate = useNavigate();
 
-  // --- Lógica de Busca de Dados (Simulação) ---
+  const fetchDashboardData = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/dashboard");
+      const json = await response.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchDashboardData = () => {
-      // 1. Dados mock para as métricas (AGORA COMPLETOS)
-      const mockMetrics: DashboardMetric[] = [
-        { label: "Total de Ocorrências", value: "15.132" },
-        { label: "Ocorrências Atendidas", value: "12.612" },
-        { label: "Ocorrências Não atendidas", value: "2.197" },
-        { label: "Bombeiro em Serviço", value: "3.125" },
-        { label: "Taxa de eficiência", value: "83,6%" },
-      ];
-
-      // 2. Dados mock para o gráfico (AGORA COMPLETOS)
-      const mockChartData: ChartDataPoint[] = [
-        { mes: "Jan", queimadas: 400 },
-        { mes: "Fev", queimadas: 300 },
-        { mes: "Mar", queimadas: 600 },
-        { mes: "Abr", queimadas: 200 },
-        { mes: "Mai", queimadas: 450 },
-        { mes: "Jun", queimadas: 380 },
-        { mes: "Jul", queimadas: 520 },
-        { mes: "Ago", queimadas: 610 },
-        { mes: "Set", queimadas: 700 },
-        { mes: "Out", queimadas: 480 },
-        { mes: "Nov", queimadas: 350 },
-        { mes: "Dez", queimadas: 400 },
-      ];
-
-      // 3. Dados mock para as opções dos filtros (AGORA COMPLETOS)
-      const mockFilterOptions: FilterOptionsData = {
-        types: [
-          { value: "incendio", label: "Incêndio" },
-          { value: "acidente", label: "Acidente Veicular" },
-          { value: "aph", label: "APH - Atendimento Pré-Hospitalar" },
-          { value: "resgate", label: "Resgate em Altura" },
-          { value: "salvamento", label: "Salvamento Aquático" },
-          { value: "incendio_veiculo", label: "Incêndio em Veículo" },
-          { value: "incendio_florestal", label: "Incêndio Florestal" },
-          { value: "outros", label: "Outros" },
-        ],
-        shifts: [
-          { value: "manha", label: "Manhã (06h-18h)" },
-          { value: "noite", label: "Noite (18h-06h)" },
-        ],
-        regions: [
-          { value: "centro", label: "Centro" },
-          { value: "zona_sul", label: "Zona Sul" },
-          { value: "zona_norte", label: "Zona Norte" },
-          { value: "zona_oeste", label: "Zona Oeste" },
-          { value: "rmr", label: "Região Metropolitana" },
-        ],
-        groupings: [
-          { value: "gbi", label: "GBI (Grup. de Bombeiros de Incêndio)" },
-          { value: "gbs", label: "GBS (Grup. de Busca e Salvamento)" },
-          { value: "aph", label: "APH (Atend. Pré-Hospitalar)" },
-          { value: "gmar", label: "GMAR (Grup. Marítimo)" },
-        ],
-        periods: [
-          { value: "today", label: "Hoje" },
-          { value: "week", label: "Última semana" },
-          { value: "month", label: "Último mês" },
-          { value: "quarter", label: "Últimos 3 meses" },
-          { value: "year", label: "Último ano" },
-        ],
-      };
-
-      // 4. Simula o tempo de uma requisição de rede
-      setTimeout(() => {
-        setMetrics(mockMetrics);
-        setChartData(mockChartData);
-        setFilterOptions(mockFilterOptions);
-        setIsLoading(false);
-      }, 500);
-    };
-
     fetchDashboardData();
-  }, [navigate]);
+  }, []);
 
-  // --- Estado de Carregamento ---
-  if (isLoading) {
+  if (isLoading || !data) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center bg-[#F9F9F9]">
-        <p className="text-[#1650A7] text-xl">
-          Carregando dados do dashboard...
-        </p>
+      <div className="flex h-screen items-center justify-center">
+        Carregando Dashboard Inteligente...
       </div>
     );
   }
 
-  // --- Handlers dos Filtros ---
-  const handleFilterChange = (
-    e: React.ChangeEvent<HTMLSelectElement>,
-    filterName: keyof FilterState
-  ) => {
-    setFilters((prevFilters) => ({
-      ...prevFilters,
-      [filterName]: e.target.value,
-    }));
-  };
-
   return (
-    <div className="w-screen h-screen flex bg-[#F9F9F9] max-md:flex-col overflow-hidden">
+    <div className="flex h-screen bg-[#F9F9F9] overflow-hidden">
       <Sidebar />
-
-      <main className="flex-1 overflow-y-auto px-[40px] pt-[40px] pb-[30px] max-md:p-5 max-sm:p-4">
+      <main className="flex-1 overflow-y-auto p-8">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <button
-            onClick={() => window.history.back()}
-            className="inline-flex items-center justify-center rounded-full w-9 h-9 hover:bg-black/5"
-          >
-            <ArrowLeft className="w-5 h-5 text-[#1650A7]" />
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/home")}
+              className="p-2 hover:bg-gray-200 rounded-full"
+            >
+              <ArrowLeft className="text-[#1650A7]" />
+            </button>
+            <h1 className="text-2xl font-bold text-[#1650A7]">
+              Dashboard Analítico & Preditivo
+            </h1>
+          </div>
+          <button onClick={fetchDashboardData}>
+            <RefreshCw className="text-[#1650A7]" />
           </button>
-          <h1 className="text-[#1650A7] text-2xl font-semibold">
-            Dashboard Operacional
-          </h1>
         </div>
 
-        {/* MÉTRICAS (AGORA COMPLETAS) */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {metrics.map((item, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col items-center justify-center text-center"
-            >
-              <p className="text-sm text-gray-600 mb-1">{item.label}</p>
-              <p className="text-[#1650A7] text-2xl font-bold">{item.value}</p>
-            </div>
-          ))}
-        </section>
+        {/* KPIs */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <KpiCard label="Total" value={data.kpis.total} />
+          <KpiCard
+            label="Ativas"
+            value={data.kpis.ativas}
+            color="text-red-600"
+          />
+          <KpiCard
+            label="Concluídas"
+            value={data.kpis.concluidas}
+            color="text-green-600"
+          />
+          <KpiCard label="Eficiência" value={data.kpis.eficiencia} />
+        </div>
 
-        {/* --- FILTROS (Dinâmicos) --- */}
-        <section className="flex flex-wrap gap-3 mb-8">
-          <select
-            value={filters.type}
-            onChange={(e) => handleFilterChange(e, "type")}
-            className="h-12 px-4 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:border-[#1650A7] focus:outline-none focus:ring-2 focus:ring-[#1650A7]/30"
-          >
-            <option value="">Tipo de ocorrência</option>
-            {filterOptions.types.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filters.shift}
-            onChange={(e) => handleFilterChange(e, "shift")}
-            className="h-12 px-4 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:border-[#1650A7] focus:outline-none focus:ring-2 focus:ring-[#1650A7]/30"
-          >
-            <option value="">Turno</option>
-            {filterOptions.shifts.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filters.region}
-            onChange={(e) => handleFilterChange(e, "region")}
-            className="h-12 px-4 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:border-[#1650A7] focus:outline-none focus:ring-2 focus:ring-[#1650A7]/30"
-          >
-            <option value="">Região</option>
-            {filterOptions.regions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filters.grouping}
-            onChange={(e) => handleFilterChange(e, "grouping")}
-            className="h-12 px-4 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:border-[#1650A7] focus:outline-none focus:ring-2 focus:ring-[#1650A7]/30"
-          >
-            <option value="">Grupamento</option>
-            {filterOptions.groupings.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filters.period}
-            onChange={(e) => handleFilterChange(e, "period")}
-            className="h-12 px-4 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:border-[#1650A7] focus:outline-none focus:ring-2 focus:ring-[#1650A7]/30"
-          >
-            <option value="">Período</option>
-            {filterOptions.periods.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </section>
-
-        {/* GRÁFICO REAL */}
-        <section className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-[#1650A7] text-lg font-semibold mb-4">
-            Ocorrências por Queimadas
-          </h3>
-          <div className="w-full h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={chartData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="mes" stroke="#1650A7" />
-                <YAxis stroke="#1650A7" />
+        {/* --- LINHA 1: Temporal e Frequência --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Gráfico de Linha (Temporal) */}
+          <ChartCard title="Evolução Temporal (Último Ano)">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={data.lineData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
                 <Tooltip />
-                <Legend />
                 <Line
                   type="monotone"
-                  dataKey="queimadas"
-                  stroke="#FF4444"
+                  dataKey="ocorrencias"
+                  stroke="#1650A7"
                   strokeWidth={3}
-                  dot={{ r: 5 }}
-                  activeDot={{ r: 7 }}
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
-        </section>
+          </ChartCard>
+
+          {/* Gráfico de Rosca (Frequência Relativa) */}
+          <ChartCard title="Frequência por Tipo de Caso">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={data.pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  paddingAngle={5}
+                  dataKey="value"
+                  label
+                >
+                  {data.pieData.map((entry: any, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+
+        {/* --- LINHA 2: Espacial e Histograma --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Distribuição Espacial (Barras) */}
+          <ChartCard title="Distribuição Espacial (Por Região)">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.spatialData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="regiao" type="category" width={100} />
+                <Tooltip />
+                <Bar
+                  dataKey="ocorrencias"
+                  fill="#00C49F"
+                  radius={[0, 4, 4, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* Histograma de Idades */}
+          <ChartCard title="Perfil das Vítimas (Distribuição Etária)">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.histogramData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="faixa" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="quantidade" fill="#FF8042" name="Vítimas" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+
+        {/* --- LINHA 3: Análise Preditiva e Comparação --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Feature Importance (XGBoost) */}
+          <ChartCard title="Fatores de Risco (IA - XGBoost)">
+            <p className="text-sm text-gray-500 mb-2">
+              Quais variáveis mais influenciam a gravidade?
+            </p>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.featureImportance} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="feature" type="category" width={80} />
+                <Tooltip />
+                <Bar
+                  dataKey="importancia"
+                  fill="#1650A7"
+                  name="Importância (%)"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* Boxplot (Média de Tempo de Resposta) */}
+          <ChartCard title="Tempo Médio de Resposta (min)">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.boxplotData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="tipo"
+                  tick={{ fontSize: 10 }}
+                  interval={0}
+                  angle={-15}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="tempo_medio" fill="#FF4444" name="Tempo (min)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
       </main>
     </div>
   );
 };
+
+// Componentes Auxiliares
+const KpiCard = ({ label, value, color = "text-[#1650A7]" }: any) => (
+  <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 text-center">
+    <p className="text-gray-500 text-sm">{label}</p>
+    <p className={`text-2xl font-bold ${color}`}>{value}</p>
+  </div>
+);
+
+const ChartCard = ({ title, children }: any) => (
+  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+    <h3 className="text-[#1650A7] font-bold mb-4 flex items-center gap-2">
+      <BarChart3 size={18} /> {title}
+    </h3>
+    {children}
+  </div>
+);
 
 export default Dashboard;

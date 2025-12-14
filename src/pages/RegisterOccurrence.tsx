@@ -1,73 +1,104 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, UploadCloud } from "lucide-react";
+import { ArrowLeft, BrainCircuit } from "lucide-react";
 import { toast } from "sonner";
 import Sidebar from "@/components/dashboard/Sidebar";
-
-// URL CORRIGIDA (Ngrok)
-const API_BASE_URL = "https://hastily-preaseptic-myrle.ngrok-free.dev/database";
 
 const RegisterOccurrence = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPredicting, setIsPredicting] = useState(false);
+
+  // Listas compatíveis com o Backend
+  const tiposModelo = [
+    "Incêndio em Edifício",
+    "Incêndio Florestal",
+    "Acidente Veicular",
+    "Resgate em Altura",
+    "APH - Mal Súbito",
+    "Salvamento Aquático",
+    "Vazamento de Gás",
+  ];
+  const regioes = [
+    "Centro",
+    "Zona Norte",
+    "Zona Sul",
+    "Zona Oeste",
+    "Região Metropolitana",
+  ];
 
   const [formData, setFormData] = useState({
     title: "",
-    type: "1",
-    priority: "Media",
+    type: tiposModelo[0],
+    region: regioes[0],
+    priority: "Média",
     victims: "",
     details: "",
   });
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+  // 1. Chamar a IA
+  const handlePredictPriority = async () => {
+    setIsPredicting(true);
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/predict-priority",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipo: formData.type,
+            regiao: formData.region,
+            hora: new Date().getHours(),
+          }),
+        }
+      );
+      const data = await response.json();
+      if (data.prioridade_sugerida) {
+        setFormData((prev) => ({
+          ...prev,
+          priority: data.prioridade_sugerida,
+        }));
+        toast.success(`IA sugeriu: ${data.prioridade_sugerida}`);
+      }
+    } catch {
+      toast.error("Erro na IA. Verifique se o backend está rodando.");
+    } finally {
+      setIsPredicting(false);
     }
   };
 
+  // 2. Registrar Ocorrência (AGORA REAL)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const data = new FormData();
-      data.append("title", formData.title);
-      data.append("data", new Date().toISOString());
-      data.append("victims", formData.victims || "Nenhuma");
-      data.append("details", formData.details || "Sem detalhes");
-      data.append("status", "Em_andamento");
-      data.append("priority", formData.priority);
-      data.append("occurrencetype", formData.type);
+      const payload = {
+        titulo: formData.title,
+        tipo: formData.type,
+        regiao: formData.region,
+        prioridade: formData.priority,
+        vitimas: formData.victims,
+        detalhes: formData.details,
+      };
 
-      // Coordenadas fixas para teste web (Centro de Recife)
-      data.append("latitude", "-8.04756");
-      data.append("longitude", "-34.87700");
-
-      if (selectedFile) {
-        data.append("images", selectedFile);
-      }
-
-      const response = await fetch(`${API_BASE_URL}/occurrence/registry`, {
+      const response = await fetch("http://127.0.0.1:5000/api/occurrences", {
         method: "POST",
-        body: data,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const txt = await response.text();
-        throw new Error(txt || "Erro ao registrar");
-      }
+      if (!response.ok) throw new Error("Erro ao salvar");
 
-      toast.success("Ocorrência registrada!");
-      navigate("/home");
-    } catch (error: any) {
+      toast.success("Ocorrência salva no banco de dados!");
+      navigate("/dashboard"); // Vai para o Dashboard ver o número aumentar
+    } catch (error) {
       console.error(error);
-      toast.error("Erro: " + error.message);
+      toast.error("Erro ao conectar com o servidor.");
     } finally {
       setIsSubmitting(false);
     }
@@ -91,50 +122,82 @@ const RegisterOccurrence = () => {
           onSubmit={handleSubmit}
           className="max-w-2xl mx-auto bg-white p-8 rounded-xl border shadow-sm space-y-6"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Título</label>
-              <input
-                required
-                name="title"
-                onChange={handleChange}
-                className="w-full p-3 border rounded-lg bg-gray-50"
-                placeholder="Ex: Incêndio em loja"
-              />
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">Título</label>
+            <input
+              required
+              name="title"
+              onChange={handleChange}
+              className="w-full p-3 border rounded-lg bg-gray-50"
+              placeholder="Ex: Fogo em apartamento"
+            />
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-sm font-bold text-gray-700">Tipo</label>
               <select
                 name="type"
+                value={formData.type}
                 onChange={handleChange}
                 className="w-full p-3 border rounded-lg bg-gray-50"
               >
-                <option value="1">Incêndio</option>
-                <option value="2">Resgate</option>
-                <option value="3">APH</option>
-                <option value="4">Prevenção</option>
-                <option value="5">Ambiental</option>
+                {tiposModelo.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Região</label>
+              <select
+                name="region"
+                value={formData.region}
+                onChange={handleChange}
+                className="w-full p-3 border rounded-lg bg-gray-50"
+              >
+                {regioes.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-gray-700">
-              Prioridade
-            </label>
+          <div className="space-y-2 bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-sm font-bold text-gray-700">
+                Prioridade
+              </label>
+              <button
+                type="button"
+                onClick={handlePredictPriority}
+                disabled={isPredicting}
+                className="text-xs flex items-center gap-1 bg-[#1650A7] text-white px-3 py-1 rounded-full hover:bg-blue-800 transition disabled:opacity-50"
+              >
+                <BrainCircuit size={14} />
+                {isPredicting ? "Calculando..." : "Sugerir com IA"}
+              </button>
+            </div>
             <div className="flex gap-4">
-              {["Baixa", "Media", "Alta"].map((p) => (
+              {["Baixa", "Média", "Alta"].map((p) => (
                 <label
                   key={p}
-                  className="flex items-center gap-2 cursor-pointer"
+                  className={`flex-1 flex items-center justify-center gap-2 cursor-pointer p-3 rounded-lg border transition ${
+                    formData.priority === p
+                      ? "bg-white border-[#1650A7] ring-1 ring-[#1650A7]"
+                      : "border-gray-200"
+                  }`}
                 >
                   <input
                     type="radio"
                     name="priority"
                     value={p}
                     onChange={handleChange}
-                    defaultChecked={p === "Media"}
+                    checked={formData.priority === p}
+                    className="accent-[#1650A7]"
                   />
                   <span className="text-sm">{p}</span>
                 </label>
@@ -143,32 +206,13 @@ const RegisterOccurrence = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-gray-700">
-              Evidência (Foto)
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 cursor-pointer relative">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-              <UploadCloud size={32} className="mb-2 text-[#1650A7]" />
-              <span className="text-sm">
-                {selectedFile
-                  ? selectedFile.name
-                  : "Clique para selecionar uma foto"}
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <label className="text-sm font-bold text-gray-700">Vítimas</label>
             <input
               name="victims"
+              type="number"
               onChange={handleChange}
               className="w-full p-3 border rounded-lg bg-gray-50"
-              placeholder="Qtd e estado..."
+              placeholder="0"
             />
           </div>
 
@@ -177,9 +221,8 @@ const RegisterOccurrence = () => {
             <textarea
               name="details"
               onChange={handleChange}
-              rows={4}
+              rows={3}
               className="w-full p-3 border rounded-lg bg-gray-50"
-              placeholder="Descreva a situação..."
             />
           </div>
 
@@ -188,7 +231,7 @@ const RegisterOccurrence = () => {
             disabled={isSubmitting}
             className="w-full py-4 bg-[#1650A7] text-white font-bold rounded-lg hover:bg-blue-800 transition disabled:opacity-50"
           >
-            {isSubmitting ? "Enviando..." : "Registrar Ocorrência"}
+            {isSubmitting ? "Salvando..." : "Registrar Ocorrência"}
           </button>
         </form>
       </main>
