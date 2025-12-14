@@ -1,378 +1,194 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
+import Sidebar from "@/components/dashboard/Sidebar";
 
-// Tipos auxiliares
-type FilterOption = { value: string | number; label: string };
-type SubTypeMap = { [key: string]: FilterOption[] };
+// URL CORRIGIDA (Ngrok)
+const API_BASE_URL = "https://hastily-preaseptic-myrle.ngrok-free.dev/database";
 
-type FormOptionsData = {
-  types: FilterOption[];
-  subTypes: SubTypeMap;
-  priorities: FilterOption[];
-};
-
-type FormData = {
-  tipo: string;
-  subtipo: string;
-  date: string;
-  hora: string;
-  envolvidos: string;
-  prioridade: string;
-  detalhes: string;
-  rua: string;
-  numero: string;
-  complemento: string;
-  id_bairro: string;
-};
-
-const REGISTER_OCCURRENCE_URL = `https://alerta-conecta-backend-production.up.railway.app/database/occurrence/registry`;
-
-const MOCK_FORM_OPTIONS: FormOptionsData = {
-  types: [
-    { value: "1", label: "Incêndio" },
-    { value: "2", label: "Resgate" },
-    { value: "3", label: "APH" },
-    { value: "4", label: "Prevenção" },
-    { value: "5", label: "Ocorrência Ambiental" },
-    { value: "6", label: "Ocorrência Administrativa" },
-    { value: "7", label: "Desastre Natural" },
-  ],
-  subTypes: {
-    "1": [
-      { value: "101", label: "Incêndio em Edificação Residencial" },
-      { value: "102", label: "Incêndio em Edificação Comercial" },
-      { value: "103", label: "Incêndio Florestal" },
-      { value: "104", label: "Incêndio em Veículo" },
-      { value: "105", label: "Incêndio Industrial" },
-      { value: "106", label: "Princípio de Incêndio" },
-      { value: "107", label: "Incêndio em Área Urbana / Lixo / Terreno Baldio" },
-    ],
-    "2": [
-      { value: "201", label: "Resgate em Altura" },
-      { value: "202", label: "Resgate Veicular" },
-      { value: "203", label: "Resgate Aquático" },
-      { value: "204", label: "Resgate em Espaço Confinado" },
-      { value: "205", label: "Resgate de Animal" },
-      { value: "206", label: "Resgate em Desabamento / Colapso Estrutural" },
-    ],
-  },
-  priorities: [
-    { value: "Baixa", label: "Prioridade Baixa" },
-    { value: "Media", label: "Prioridade Média" },
-    { value: "Alta", label: "Prioridade Alta" },
-    { value: "Critica", label: "Prioridade Crítica" },
-  ],
-};
-
-const RegisterOccurrence: React.FC = () => {
+const RegisterOccurrence = () => {
   const navigate = useNavigate();
-
-  const [form, setForm] = useState<FormData>({
-    tipo: "",
-    subtipo: "",
-    date: new Date().toISOString().split("T")[0],
-    hora: new Date().toTimeString().substring(0, 5),
-    envolvidos: "",
-    prioridade: "Media",
-    detalhes: "",
-    rua: "",
-    numero: "",
-    complemento: "",
-    id_bairro: "",
-  });
-
-  const [tipoIndex, setTipoIndex] = useState<number>(-1);
-
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pageError, setPageError] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const [formOptions, setFormOptions] = useState<FormOptionsData>({
-    types: [],
-    subTypes: {},
-    priorities: [],
+  const [formData, setFormData] = useState({
+    title: "",
+    type: "1",
+    priority: "Media",
+    victims: "",
+    details: "",
   });
-  const [currentSubTypes, setCurrentSubTypes] = useState<FilterOption[]>([]);
 
-  useEffect(() => {
-    try {
-      const options = MOCK_FORM_OPTIONS;
-      setFormOptions(options);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-      const defaultType = String(options.types[0]?.value || "");
-      const defaultSubTypes = options.subTypes[defaultType] || [];
+  const handleChange = (e: any) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-      setForm((prevForm) => ({
-        ...prevForm,
-        tipo: defaultType,
-        subtipo: String(defaultSubTypes[0]?.value || ""),
-      }));
-
-      setTipoIndex(0);
-    } catch (err: any) {
-      setPageError(err.message || "Erro ao carregar opções.");
-    } finally {
-      setTimeout(() => setIsLoading(false), 200);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    const newSubTypes = formOptions.subTypes[form.tipo] || [];
-    setCurrentSubTypes(newSubTypes);
-    setForm((f) => ({
-      ...f,
-      subtipo: String(newSubTypes[0]?.value || ""),
-    }));
-  }, [form.tipo, formOptions.subTypes]);
-
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-
-    if (name === "tipo") {
-      const select = e.target as HTMLSelectElement;
-      setTipoIndex(select.selectedIndex);
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setSubmitError(null);
-
-    const token = localStorage.getItem("authToken") || "";
-
-    const selectedSubtype = currentSubTypes.find(
-      (sub) => String(sub.value) === form.subtipo
-    );
-    const title = selectedSubtype ? selectedSubtype.label : "Título não encontrado";
-
-    if (!form.rua.trim()) return setSubmitError("Informe a rua.");
-    if (!form.numero.trim()) return setSubmitError("Informe o número.");
-    if (!form.id_bairro.trim()) return setSubmitError("Informe o ID do bairro.");
-
-    const typeName =
-      formOptions.types[tipoIndex]?.label ||
-      formOptions.types.find((o) => String(o.value) === form.tipo)?.label ||
-      "";
-
-    const payload = {
-      title,
-      timestamp: `${form.date}T${form.hora}`,
-      victims: form.envolvidos,
-      details: form.detalhes,
-      priority: form.prioridade,
-      type: {
-        id: Number(form.tipo),
-        index: tipoIndex,
-        name: typeName,
-      },
-      address: {
-        street: form.rua.trim(),
-        number: form.numero.trim(),
-        complement: form.complemento.trim(),
-        idDistrict: Number(form.id_bairro),
-      },
-    };
-
-    console.log("Payload final:", payload);
 
     try {
-      const response = await fetch(REGISTER_OCCURRENCE_URL, {
+      const data = new FormData();
+      data.append("title", formData.title);
+      data.append("data", new Date().toISOString());
+      data.append("victims", formData.victims || "Nenhuma");
+      data.append("details", formData.details || "Sem detalhes");
+      data.append("status", "Em_andamento");
+      data.append("priority", formData.priority);
+      data.append("occurrencetype", formData.type);
+
+      // Coordenadas fixas para teste web (Centro de Recife)
+      data.append("latitude", "-8.04756");
+      data.append("longitude", "-34.87700");
+
+      if (selectedFile) {
+        data.append("images", selectedFile);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/occurrence/registry`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
+        body: data,
       });
 
-      if (!response.ok) throw new Error("Falha ao registrar ocorrência.");
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(txt || "Erro ao registrar");
+      }
 
-      toast.success("Ocorrência registrada com sucesso!");
+      toast.success("Ocorrência registrada!");
       navigate("/home");
-    } catch (err: any) {
-      toast.error("Erro ao registrar", { description: err.message });
-      setSubmitError(err.message);
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Erro: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (isLoading)
-    return (
-      <div className="w-screen h-screen flex items-center justify-center bg-[#F9F9F9]">
-        <p className="text-[#1650A7] text-xl">Carregando formulário...</p>
-      </div>
-    );
-
-  if (pageError)
-    return (
-      <div className="w-screen h-screen flex flex-col items-center justify-center bg-[#F9F9F9]">
-        <p className="text-red-600 text-lg">{pageError}</p>
-        <Link
-          to="/home"
-          className="mt-3 px-4 py-2 rounded-lg bg-[#1650A7] text-white"
-        >
-          Voltar
-        </Link>
-      </div>
-    );
+  };
 
   return (
-    <div className="w-screen h-screen flex overflow-hidden bg-[#F9F9F9] max-md:flex-col">
-      <main className="flex-1 overflow-y-auto px-[60px] pt-[40px] pb-[30px] max-md:p-5">
-        <div className="flex items-center gap-3 mb-6">
+    <div className="flex h-screen bg-[#F9F9F9] overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto p-6 md:p-10">
+        <div className="flex items-center gap-4 mb-8">
           <Link
             to="/home"
-            className="inline-flex items-center justify-center rounded-full w-9 h-9 hover:bg-black/5"
+            className="p-2 rounded-full bg-white hover:bg-gray-100 border shadow-sm"
           >
-            <ArrowLeft className="w-5 h-5 text-black" />
+            <ArrowLeft size={20} className="text-gray-600" />
           </Link>
-          <h1 className="mx-auto text-[#1650A7] text-2xl font-semibold">
-            Registrar Ocorrência
-          </h1>
-          <div className="w-9 h-9" />
+          <h1 className="text-2xl font-bold text-[#1650A7]">Nova Ocorrência</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="max-w-[680px] mx-auto space-y-5">
-          {/* Tipo de ocorrência */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Tipo</label>
-            <select
-              name="tipo"
-              value={form.tipo}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              className="w-full h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            >
-              {formOptions.types.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+        <form
+          onSubmit={handleSubmit}
+          className="max-w-2xl mx-auto bg-white p-8 rounded-xl border shadow-sm space-y-6"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Título</label>
+              <input
+                required
+                name="title"
+                onChange={handleChange}
+                className="w-full p-3 border rounded-lg bg-gray-50"
+                placeholder="Ex: Incêndio em loja"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Tipo</label>
+              <select
+                name="type"
+                onChange={handleChange}
+                className="w-full p-3 border rounded-lg bg-gray-50"
+              >
+                <option value="1">Incêndio</option>
+                <option value="2">Resgate</option>
+                <option value="3">APH</option>
+                <option value="4">Prevenção</option>
+                <option value="5">Ambiental</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">
+              Prioridade
+            </label>
+            <div className="flex gap-4">
+              {["Baixa", "Media", "Alta"].map((p) => (
+                <label
+                  key={p}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="priority"
+                    value={p}
+                    onChange={handleChange}
+                    defaultChecked={p === "Media"}
+                  />
+                  <span className="text-sm">{p}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
-          {/* Sub-tipo */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Subtipo</label>
-            <select
-              name="subtipo"
-              value={form.subtipo}
-              onChange={handleChange}
-              disabled={isSubmitting || currentSubTypes.length === 0}
-              className="w-full h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            >
-              {currentSubTypes.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">
+              Evidência (Foto)
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 cursor-pointer relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+              <UploadCloud size={32} className="mb-2 text-[#1650A7]" />
+              <span className="text-sm">
+                {selectedFile
+                  ? selectedFile.name
+                  : "Clique para selecionar uma foto"}
+              </span>
+            </div>
           </div>
 
-          {/* Campos de data/hora/prioridade */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">Vítimas</label>
             <input
-              type="date"
-              name="date"
-              value={form.date}
+              name="victims"
               onChange={handleChange}
-              disabled={isSubmitting}
-              className="h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            />
-            <input
-              type="time"
-              name="hora"
-              value={form.hora}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              className="h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            />
-            <select
-              name="prioridade"
-              value={form.prioridade}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              className="h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            >
-              {formOptions.priorities.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Envolvidos */}
-          <input
-            name="envolvidos"
-            value={form.envolvidos}
-            onChange={handleChange}
-            placeholder="Ex: 2 vítimas, 1 veículo"
-            className="w-full h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-          />
-
-          {/* Detalhes */}
-          <textarea
-            name="detalhes"
-            value={form.detalhes}
-            onChange={handleChange}
-            rows={4}
-            placeholder="Descreva a ocorrência..."
-            className="w-full px-4 py-3 bg-[#F6F6F6] border rounded-lg text-sm resize-y"
-          />
-
-          {/* Endereço */}
-          <h2 className="text-[#1650A7] font-semibold mt-6 mb-3">Endereço</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              name="rua"
-              value={form.rua}
-              onChange={handleChange}
-              placeholder="Rua"
-              className="h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            />
-            <input
-              name="numero"
-              value={form.numero}
-              onChange={handleChange}
-              placeholder="Número"
-              className="h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            />
-            <input
-              name="complemento"
-              value={form.complemento}
-              onChange={handleChange}
-              placeholder="Complemento (opcional)"
-              className="h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
-            />
-            <input
-              name="id_bairro"
-              type="number"
-              value={form.id_bairro}
-              onChange={handleChange}
-              placeholder="ID do bairro"
-              className="h-12 px-4 bg-[#F6F6F6] border rounded-lg text-sm"
+              className="w-full p-3 border rounded-lg bg-gray-50"
+              placeholder="Qtd e estado..."
             />
           </div>
 
-          {submitError && (
-            <div className="text-red-600 text-sm text-center">{submitError}</div>
-          )}
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">Detalhes</label>
+            <textarea
+              name="details"
+              onChange={handleChange}
+              rows={4}
+              className="w-full p-3 border rounded-lg bg-gray-50"
+              placeholder="Descreva a situação..."
+            />
+          </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full h-11 bg-[#1650A7] text-white rounded-lg font-medium hover:bg-[#0f3d7f]"
+            className="w-full py-4 bg-[#1650A7] text-white font-bold rounded-lg hover:bg-blue-800 transition disabled:opacity-50"
           >
-            {isSubmitting ? "Registrando..." : "Registrar Ocorrência"}
+            {isSubmitting ? "Enviando..." : "Registrar Ocorrência"}
           </button>
         </form>
       </main>
