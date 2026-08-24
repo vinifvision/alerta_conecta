@@ -1,135 +1,195 @@
-# 🚒 Alerta Conecta
+<p align="center">
+  <img src="public/AlertaConectaLogo.svg" alt="Alerta Conecta" width="220" />
+</p>
 
-## 📘 Sobre o Projeto
-O *Alerta Conecta* é um sistema desenvolvido para o *Corpo de Bombeiros Militar de Pernambuco, com o objetivo de otimizar o **gerenciamento de ocorrências, **endereços* e *usuários, garantindo uma **comunicação ágil e eficiente* entre as unidades operacionais.
+<h1 align="center">Alerta Conecta — Painel Web</h1>
 
-O sistema foi criado para facilitar o registro, acompanhamento e análise de ocorrências em tempo real, integrando diferentes setores por meio de uma plataforma web moderna e segura.
+<p align="center">
+  Plataforma web de gestão de ocorrências para o Corpo de Bombeiros, com dashboard operacional,
+  registro de chamados, geolocalização e trilha de auditoria.
+</p>
 
----
-
-## 🏗 Arquitetura do Sistema
-
-O sistema adota uma *arquitetura em camadas (Cliente-Servidor), seguindo o modelo **MVC (Model-View-Controller)*:
-
-### 🔹 Frontend
-- Desenvolvido em React, TypeScript, TailwindCss e Vite + Shadcn/ui.
-- Responsável pela *interface com o usuário*.
-- Oferece telas intuitivas para registro, acompanhamento e consulta de ocorrências.
-
-### 🔹 Backend
-- Desenvolvido em *Java (Spring Boot)*.
-- Gerencia as *regras de negócio, **autenticação* e *comunicação com o banco de dados*.
-- Disponibiliza *APIs REST* para integração com o frontend.
-
-### 🔹 Banco de Dados
-- Utiliza *MySQL*.
-- Armazena informações sobre usuários, funcionários, endereços e ocorrências.
-- Modelagem relacional que garante integridade e consistência dos dados.
+<p align="center">
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" />
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white" />
+  <img alt="TailwindCSS" src="https://img.shields.io/badge/TailwindCSS-3-06B6D4?logo=tailwindcss&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/license-privado-lightgrey" />
+</p>
 
 ---
 
-## 🔄 Fluxo de Dados
+## Sobre o projeto
 
-O fluxo segue o padrão:
+O **Alerta Conecta** é o painel administrativo web utilizado por equipes de bombeiros e gestores
+para acompanhar, registrar e auditar ocorrências em tempo real (incêndios, resgates, atendimentos
+pré-hospitalares, ações de prevenção, entre outros). Este repositório contém a aplicação **web**
+(construída em React + Vite), que consome a mesma API REST utilizada pelo [aplicativo mobile
+Alerta Conecta](https://github.com/vinifvision/alerta-conecta-mobile).
 
+O projeto foi construído sobre o boilerplate **Vite + React + shadcn/ui**, com foco em um painel
+rápido, responsivo e com controle de acesso por perfil de usuário.
 
-O *frontend* envia requisições HTTP ao *backend, que processa as regras de negócio e realiza consultas no **banco de dados*.  
-As respostas retornam em formato *JSON*, exibidas ao usuário em tempo real.
+## Funcionalidades
 
----
+- 🏠 **Feed de ocorrências** — lista em tempo real das ocorrências registradas, com status,
+  prioridade e tipo, e busca por atualizações via API.
+- 📋 **Registro de ocorrência** — formulário para abertura de novos chamados, com upload de
+  evidência fotográfica, definição de prioridade (Baixa / Média / Alta) e tipo de atendimento.
+- 🔍 **Detalhes da ocorrência** — visão completa de uma ocorrência, incluindo vítimas envolvidas,
+  descrição, evidência fotográfica e localização em mapa incorporado (Google Maps).
+- 📊 **Dashboard operacional** — indicadores (KPIs) de total de ocorrências, atendimentos,
+  eficiência e efetivo em serviço, com gráfico de série histórica (Recharts) e filtros por tipo,
+  turno, região, grupamento e período.
+- 🧾 **Auditoria (Audit Logs)** — histórico de ações realizadas no sistema (login, criação, edição,
+  exclusão), com filtros, busca textual, paginação e exportação para **CSV**.
+- 👤 **Perfil de usuário** e controle de sessão.
+- 🔐 **Rotas protegidas por perfil (RBAC)** — acesso segmentado entre os papéis `Gerente`,
+  `Analista de Sistemas` e `Técnico de Suporte`, sendo Auditoria e Perfil exclusivos de `Gerente`.
 
-## ⚙ APIs e Controladores
+> ℹ️ **Ambiente de demonstração:** o contexto de autenticação (`AuthContext`) está atualmente
+> configurado em **modo de gravação/demo**, autenticando um usuário fixo (`Gerente`) automaticamente
+> para facilitar apresentações. Veja [Autenticação](#autenticação-e-perfis) para reativar o fluxo real.
 
-### *UserDataController*
-Gerencia as operações relacionadas aos *usuários* do sistema.
+## Stack tecnológica
 
-*Principais funções:*
-- Cadastro e autenticação de usuários;
-- Listagem e atualização de informações;
-- Controle de permissões e perfis de acesso.
+| Camada | Tecnologias |
+| --- | --- |
+| Build / Dev server | [Vite 7](https://vitejs.dev/) + `@vitejs/plugin-react-swc` |
+| Linguagem | TypeScript 5.9 |
+| UI | React 19, [shadcn/ui](https://ui.shadcn.com/) (Radix UI), Tailwind CSS 3 |
+| Formulários | React Hook Form + Zod |
+| Dados assíncronos | TanStack React Query |
+| Gráficos | Recharts |
+| Mapas | Leaflet / React Leaflet, embed do Google Maps |
+| Roteamento | React Router DOM 7 |
+| Notificações | Sonner (toasts) |
+| Qualidade | ESLint 9 + typescript-eslint |
+| Gerenciador de pacotes | npm ou Bun (`bun.lockb` incluso) |
 
----
+## Estrutura do projeto
 
-### *OccurrenceDataController*
-Responsável pela manipulação de *ocorrências*.
+```
+alerta-conecta/
+├── public/                  # Ativos estáticos (logos, favicon, ícones PWA)
+├── src/
+│   ├── components/
+│   │   ├── dashboard/        # Sidebar, KPICards, gráficos e filtros do dashboard
+│   │   └── ui/                # Componentes shadcn/ui (botões, dialogs, tabelas, etc.)
+│   ├── contexts/
+│   │   └── AuthContext.tsx    # Contexto de autenticação e sessão do usuário
+│   ├── hooks/                 # Hooks utilitários (use-mobile, use-toast)
+│   ├── lib/                   # Funções utilitárias (cn, formatação, etc.)
+│   ├── pages/
+│   │   ├── Home.tsx            # Feed de ocorrências
+│   │   ├── Dashboard.tsx       # Indicadores e gráficos operacionais
+│   │   ├── RegisterOccurrence.tsx  # Formulário de nova ocorrência
+│   │   ├── OccurrenceDetails.tsx   # Detalhe de uma ocorrência (mapa + evidência)
+│   │   ├── AuditLogs.tsx       # Logs de auditoria com filtros e exportação CSV
+│   │   ├── UserProfile.tsx     # Perfil do usuário logado
+│   │   ├── Login.tsx           # Tela de autenticação
+│   │   └── NotFound.tsx        # Página 404
+│   ├── App.tsx                 # Definição de rotas e providers globais
+│   └── main.tsx                 # Ponto de entrada da aplicação
+├── components.json            # Configuração do shadcn/ui
+├── tailwind.config.ts
+├── vite.config.ts
+└── package.json
+```
 
-*Principais funções:*
-- Registro e atualização de ocorrências;
-- Consulta de ocorrências registradas;
-- Atualização de status (em andamento, finalizada);
-- Associação entre usuários e endereços.
+## Pré-requisitos
 
----
+- [Node.js](https://nodejs.org/) 18 ou superior
+- npm (ou [Bun](https://bun.sh/), já que o projeto inclui `bun.lockb`)
 
-### *Camadas de Serviço*
-Classes como *OccurrenceManage* e *UserManage* intermediam a comunicação entre controladores e banco de dados, centralizando as regras de negócio e garantindo um código mais limpo e organizado.
+## Como executar localmente
 
----
+```bash
+# 1. Clone o repositório
+git clone https://github.com/vinifvision/alerta-conecta.git
+cd alerta-conecta
 
-## 🧩 Estrutura do Banco de Dados (MySQL)
+# 2. Instale as dependências
+npm install
+# ou, usando Bun:
+bun install
 
-A modelagem segue o paradigma *relacional*, com as principais entidades:
+# 3. Suba o servidor de desenvolvimento
+npm run dev
+```
 
-| Entidade | Descrição |
-|-----------|------------|
-| *User* | Armazena dados de usuários e funcionários (nome, email, senha, cargo). |
-| *Funcionario* | Representa os bombeiros e agentes responsáveis pelas ocorrências. |
-| *Occurrence* | Registra as ocorrências (status, tipo, data, descrição). |
-| *OccurrenceType* | Define os tipos de ocorrência (ex: incêndio, salvamento, resgate). |
-| *Endereco* | Contém informações geográficas (rua, cidade, estado, coordenadas). |
-| *OccurrenceAddress* | Faz a ligação entre ocorrência e endereço. |
+A aplicação ficará disponível em `http://localhost:5173` (porta padrão do Vite).
 
-*Relacionamentos principais:*
-- 1:N entre *Usuário → Ocorrência*  
-- N:1 entre *Ocorrência → Tipo* e *Ocorrência → Endereço*
+### Scripts disponíveis
 
----
+| Comando | Descrição |
+| --- | --- |
+| `npm run dev` | Inicia o servidor de desenvolvimento com hot-reload |
+| `npm run build` | Gera o build de produção em `dist/` |
+| `npm run build:dev` | Gera um build usando o modo `development` |
+| `npm run preview` | Serve o build de produção localmente para testes |
+| `npm run lint` | Executa o ESLint em todo o projeto |
 
-## 🔐 Segurança e Integração
+## Integração com a API
 
-- *Autenticação JWT (JSON Web Token)* para proteger rotas e dados sensíveis.  
-- Comunicação segura via *HTTPS*.  
-- Estrutura modularizada que facilita manutenção e escalabilidade.  
-- Potencial de integração com *APIs externas* (geolocalização, notificações em tempo real, etc).
+A aplicação consome uma API REST própria do Alerta Conecta (compartilhada com o app mobile), com
+endpoints como:
 
----
+- `GET /database/occurrence/occurrence/getall` — lista de ocorrências
+- `GET /database/occurrence/:id` — detalhe de uma ocorrência
+- `POST /database/occurrence/registry` — registro de nova ocorrência (multipart, com imagem)
+- `POST /database/user/login` — autenticação
 
-## 🧠 Boas Práticas Implementadas
+Atualmente a URL base da API está fixa no código-fonte (endpoint de túnel `ngrok`), diretamente em
+cada página que faz requisições (`Home.tsx`, `RegisterOccurrence.tsx`, `OccurrenceDetails.tsx`).
+Para um ambiente de produção, recomenda-se:
 
-- Separação clara entre *camadas de controle, serviço e modelo*.  
-- Uso de *Spring Boot* com *JPA/Hibernate* para persistência.  
-- *Validação de dados* e *tratamento de exceções* centralizado.  
-- Código limpo e organizado, com padronização de nomenclatura e responsabilidades.
+1. Extrair essas constantes para variáveis de ambiente (`import.meta.env.VITE_API_URL`);
+2. Criar um cliente HTTP único em `src/lib` para centralizar chamadas e tratamento de erros.
 
----
+Enquanto a API não responde (ou retorna lista vazia), as telas de **Home** e **Dashboard** fazem
+*fallback* automático para dados fictícios (`MOCK_DATA`), garantindo que a interface nunca fique
+quebrada durante demonstrações.
 
-## ✅ Conclusão
+## Autenticação e perfis
 
-O *Alerta Conecta* apresenta uma *arquitetura sólida, segura e escalável*, adequada para aplicações corporativas de missão crítica.  
-A integração entre *ReactJS, Spring Boot e MySQL* garante desempenho e confiabilidade no gerenciamento de ocorrências.
+O sistema define três perfis de usuário:
 
-Os próximos passos incluem:
-- Expansão da *documentação das APIs*;  
-- Implementação de *testes automatizados*;  
-- Criação de *rotinas de backup* e otimização de consultas;  
-- Desenvolvimento de *integrações com sistemas externos* de geolocalização e alertas.
+| Perfil | Acesso |
+| --- | --- |
+| `Gerente` | Acesso completo: Home, Dashboard, Registro, **Auditoria** e **Perfil** |
+| `Analista de Sistemas` | Home, Dashboard, Registro e Detalhes de ocorrência |
+| `Técnico de Suporte` | Home, Dashboard, Registro e Detalhes de ocorrência |
 
----
+O controle é feito pelo componente [`ProtectedRoute`](src/components/ProtectedRoute.tsx), que
+verifica `isAuthenticated` e o `role` do usuário armazenado no `AuthContext` antes de liberar cada
+grupo de rotas.
 
-## 👨‍💻 Desenvolvido por
-Equipe de Projeto Integrador — *Corpo de Bombeiros Militar*
+> **Nota:** por padrão, o `AuthContext.tsx` está com o login real **desativado** (bypass automático
+> com um usuário `Gerente` fake), usado para gravações e demonstrações. Para reativar a autenticação
+> via API, remova o bloco `MOCK_USER` do `useEffect` e restaure a chamada a `LOGIN_API_URL` dentro da
+> função `login`.
 
-Integrantes:
-- Pedro Enrico  
-- Júlio César Martins da Cunha  
-- Vinícius Fernandes  
-- Pedro Moura 
-- Larissa Beatriz
-- Eduardo Pereira
-- Reideclildon Paulo
+## Roadmap / pontos de atenção
 
----
+- [ ] Mover a URL da API e demais segredos para variáveis de ambiente (`.env`)
+- [ ] Reativar o fluxo de login real e remover o bypass de demonstração
+- [ ] Centralizar chamadas HTTP em um client único com tratamento de erro consistente
+- [ ] Conectar o Dashboard a dados reais da API (hoje os KPIs e o gráfico são mockados)
+- [ ] Cobertura de testes automatizados
 
-## 📄 Licença
-Este projeto é de uso acadêmico e institucional, voltado para o Corpo de Bombeiros Militar de Pernambuco.  
-A redistribuição e modificação do código devem respeitar as normas da instituição e as boas práticas de desenvolvimento seguro.
+## Contribuindo
+
+1. Crie uma branch a partir da `main`: `git checkout -b feature/minha-feature`
+2. Faça commit das mudanças: `git commit -m 'feat: minha feature'`
+3. Rode o lint antes de subir: `npm run lint`
+4. Abra um Pull Request descrevendo a alteração
+
+## Projetos relacionados
+
+- 📱 [`alerta-conecta-mobile`](https://github.com/vinifvision/alerta-conecta-mobile) — aplicativo
+  mobile (Expo/React Native) para registro de ocorrências em campo, com câmera e GPS.
+
+## Licença
+
+Projeto privado/acadêmico. Direitos reservados aos autores do Alerta Conecta.
